@@ -1,6 +1,9 @@
 # Content
 
-This crate defines the traits `TryFromIterator` and `TryCollect`,  and implements them for arrays, homogeneous tuples, and the collections in the standard library.
+This crate defines the traits `TryFromIterator`, `TryCollect`, `ForceFromIterator`, and `ForceCollect`,  and implements them for arrays, homogeneous tuples, and the collections in the standard library.
+
+## `TryFromIterator` and `TryCollect`
+
 
 `TryFromIterator` provides the function `try_from_iter`, that generalizes the functionality provided by
 `FromIterator::from_iter`.  
@@ -65,3 +68,67 @@ let b: Vec<u8> = a.try_collect();
 
 assert!(b.is_err());
 ```
+
+## `ForceFromIterator` and `ForceCollect`
+
+Those traits are the panicky versions of `TryFromIterator` and `TryCollect`.
+
+The idea of those traits is to provide a shorthand, and possibly more optimized, way of performing
+
+```rust
+iterator.try_collect::<SomeType>().expect("error msg")
+```
+
+and as such, they should be used with the due caution.
+
+`ForceFromIterator::f_from_iter` is the panicky version of `TryFromIterator::try_from_iter`.
+
+it is defined as sub-trait of `ForceFromIterator`, as follows:
+
+```rust
+trait ForceFromIterator<Item> : TryFromIterator<Item> {
+    fn f_from_iter<I: IntoIterator<Item = Item>>(iter: I, error_msg: &str) -> Self {
+        Self::try_from_iter().expect(error_msg)
+    }
+}
+```
+
+***Pay attention to the fact that this blanket implementation is overwriteable, and that a custom type may implement it in other ways.***
+
+We do however encourage the users of this trait to only make implementations that are (*almost*)equivalent to
+
+```rust
+Self::try_from_iter().expect(error_msg)
+```
+
+and only improve the efficiency of the implementation, as we do for example in the implementations brovided in this crate.
+
+`ForceCollect`, similarly to `TryCollect`, is defined as a sub-trait of `IntoIterator`, as follows:
+
+```rust
+trait ForceCollect: IntoIterator {
+    fn f_collect<T: ForceFromIterator<Self::Item>>(self, error_msg: &str) -> T;
+}
+
+impl<X: IntoIterator> ForceCollect for X {
+    fn f_collect<T: ForceFromIterator<Self::Item>>(self, error_msg: &str) -> T {
+        T::f_from_iter(self, error_msg)
+    }
+}
+```
+
+Notice that this blanket implementation is not overwriteable, and it is forced to be coherent with whatever `ForceFromIterator` does.
+
+We remind again that, due to the overwriteability of the implementtion of `ForceFromIterator::f_from_iter`, it is technically not guaranteed, although it is strongly encouraged, that
+
+```rust
+iterator.try_collect::<SomeType>().expect("error msg")
+```
+
+and
+
+```rust
+iterator.f_collect::<SomeType>("error msg")
+```
+
+resolve in the same way.

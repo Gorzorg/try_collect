@@ -7,3 +7,7 @@ edition = "2021"
 
 [dependencies]
 memory_debug_tools = { git = "https://github.com/Gorzorg/memory_debug_tools.git" }
+
+[features]
+default = ["force_collect"]
+force_collect = []
