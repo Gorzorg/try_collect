@@ -94,6 +94,49 @@ pub enum ArrayAndTupleError<E> {
     TooManyItems,
 }
 
+impl<E> ArrayAndTupleError<E> {
+    /// Analogous to the `expect` function that is implemented for
+    /// `Option` and `Result`.
+    ///
+    /// Panics if `self` is not an instance of the `TryFromError`
+    /// variant.
+    ///
+    /// Otherwise, the error data in `self` is returned.
+    pub fn expect_try_from_error<STR: std::fmt::Display>(self, message: impl FnOnce() -> STR) -> E {
+        match self {
+            Self::TryFromError(err) => err,
+            _ => panic!("{}", message()),
+        }
+    }
+
+    /// Returns `true` if `self` is an instance of the `TryFromError` variant,
+    /// returns `false` otherwise
+    pub fn is_try_from_error(&self) -> bool {
+        match &self {
+            &Self::TryFromError(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if `self` is an instance of the
+    /// `NotEnoughItems` variant, returns `false` otherwise
+    pub fn not_enough_items(&self) -> bool {
+        match &self {
+            &Self::NotEnoughItems => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if `self` is an instance of the
+    /// `TooManyItems` variant, returns `false` otherwise
+    pub fn too_many_items(&self) -> bool {
+        match &self {
+            &Self::TooManyItems => true,
+            _ => false,
+        }
+    }
+}
+
 impl<IntoV: TryInto<V>, V, const N: usize> TryFromIterator<IntoV> for [V; N] {
     type Error = ArrayAndTupleError<<IntoV as TryInto<V>>::Error>;
     fn try_from_iter<T>(iter: T) -> Result<Self, Self::Error>
